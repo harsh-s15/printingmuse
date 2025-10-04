@@ -8,6 +8,10 @@ import Otp from "../models/otp.js";
 const router = express.Router();
 
 
+
+
+// Step 1: Request OTP to get email verified
+
 router.post("/send-otp", async (req, res) => {
         const { email } = req.body;
         if (!email) return res.status(400).json({ msg: "Email required" });
@@ -28,7 +32,7 @@ router.post("/send-otp", async (req, res) => {
                 { upsert: true, new: true }
         );
 
-        // await sendOTP(email, otp);
+        // await sendOTP(email, otp);   // Uncomment this line to actually send email   
 
         res.json({ msg: "OTP sent to email" });
 });
@@ -36,7 +40,12 @@ router.post("/send-otp", async (req, res) => {
 
 
 
+
+
+
+
 // Step 2: Verify OTP
+
 router.post("/verify-otp", async (req, res) => {
         const { email, otp } = req.body;
         if (!email || !otp) return res.status(400).json({ msg: "All fields required" });
@@ -58,7 +67,7 @@ router.post("/verify-otp", async (req, res) => {
 
 
 
-
+// Step 3: Register user (set password) - only if email is verified. User will have to first verify email and then be allowed to set password.
 
 router.post("/register", async (req, res) => {
         const { email, password } = req.body;
@@ -84,4 +93,60 @@ router.post("/register", async (req, res) => {
 });
 
 
+
+
+
+// login route
+
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ msg: "Missing fields" });
+
+  const user = await User.findOne({ email });
+  if (!user) return res.status(400).json({ msg: "Invalid credentials" });
+
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) return res.status(400).json({ msg: "Invalid credentials" });
+
+  req.session.userId = user._id;
+  res.json({ msg: "Login successful", userId: user._id });
+});
+
+
+
+
+
+// logout route
+
+router.post("/logout", (req, res) => {
+  req.session.destroy(err => {
+    if (err) return res.status(500).json({ msg: "Logout failed" });
+    res.clearCookie("connect.sid"); // default cookie name
+    res.json({ msg: "Logged out successfully" });
+  });
+});
+
+
+
+
+
+
+/**
+Check Session
+ */
+router.get("/me", (req, res) => {
+  if (req.session && req.session.userId) {
+    return res.json({ loggedIn: true, userId: req.session.userId });
+  }
+  res.json({ loggedIn: false });
+});
+
+
+
 export default router;
+
+
+
+
+
+
